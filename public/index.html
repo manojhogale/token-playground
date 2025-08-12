@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Token Playground</title>
+  <style>
+    :root{
+      --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --chip:#1f2937;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--bg); color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,sans-serif;
+      overflow:auto; /* page scroll -> no overlap */
+    }
+
+    header{padding:24px 16px;text-align:center;border-bottom:1px solid #1f2937}
+    header h1{margin:0;font-weight:800;letter-spacing:.5px}
+    header p{margin:8px auto 0;color:var(--muted);max-width:760px}
+
+    .wrap{
+      max-width:1200px; margin:0 auto; padding:24px;
+      display:grid; grid-template-columns:1.05fr .95fr; gap:20px; align-items:start;
+    }
+    @media (max-width:1000px){ .wrap{grid-template-columns:1fr} }
+
+    .card{
+      background:var(--card); border:1px solid #1f2937; border-radius:16px; padding:16px;
+      box-shadow:0 10px 24px rgba(0,0,0,.25);
+      display:flex; flex-direction:column; gap:12px;
+    }
+    .card h2{margin:0 0 2px; font-size:18px; color:#cbd5e1}
+
+    /* top controls */
+    .controls{
+      display:grid; gap:12px; margin-bottom:6px;
+      grid-template-columns:140px 190px minmax(240px,1fr) 150px 240px;
+      align-items:end; min-width:0;
+    }
+    .field{display:flex;flex-direction:column;gap:6px;min-width:0}
+    .label{font-size:12px;color:var(--muted)}
+    .hint{font-size:11px;color:var(--muted)}
+    .controls select,.controls input,.controls button{
+      width:100%; padding:10px; border-radius:10px; border:1px solid #334155;
+      background:#0b1220; color:var(--text);
+    }
+    .buttons{display:flex; gap:8px; justify-self:end}
+    .buttons button{cursor:pointer; border-color:#1f2937; white-space:nowrap}
+
+    .input-wrap{position:relative}
+    .input-wrap .prefix{position:absolute; left:10px; top:50%; transform:translateY(-50%); opacity:.8; font-size:13px; pointer-events:none}
+    .input-wrap input{padding-left:28px}
+
+    .check{display:flex; align-items:center; gap:6px; margin-top:4px; color:var(--muted); font-size:12px}
+    .check input{width:auto; accent-color:#22c55e}
+
+    /* train panel */
+    .subpanel{border:1px dashed #334155; border-radius:12px; padding:12px}
+    .train-grid{display:grid; gap:12px; grid-template-columns:minmax(340px,1fr) 260px; align-items:start}
+    .train-right{display:flex; flex-direction:column; gap:8px}
+    .train-status{color:var(--muted); font-size:12px}
+
+    /* editor */
+    .editor{display:flex}
+    textarea{
+      flex:1; min-height:180px;
+      width:100%; resize:vertical; padding:12px; border-radius:12px;
+      border:1px solid #334155; background:#0b1220; color:#e5e7eb;
+      font-size:16px; line-height:1.4;
+    }
+
+    .stats{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:6px 0 2px}
+    .stat{background:#0b1220; border:1px solid #334155; padding:10px 12px; border-radius:12px; text-align:center}
+    .stat b{font-size:18px}
+
+    /* right: tokens */
+    .tokens-scroll{max-height:65vh; overflow:auto; padding-right:0}
+    .token-grid{display:flex; flex-wrap:wrap; gap:8px; align-content:flex-start; justify-content:flex-start}
+    .tok{background:var(--chip); border:1px dashed #374151; border-radius:999px; padding:8px 10px; display:inline-flex; gap:8px; align-items:center; font-family:ui-monospace,Menlo,SFMono-Regular,monospace; font-size:13px}
+    .tok .id{opacity:.85; font-size:12px; background:#0b1220; padding:2px 6px; border-radius:999px; border:1px solid #334155}
+
+    .space-dot{display:inline-block; width:8px; height:8px; border-radius:999px; background:#94a3b8; opacity:.6; margin-right:6px; vertical-align:middle}
+
+    .legend{font-size:14px; color:var(--muted)}
+    .pill{display:inline-block; padding:4px 8px; border-radius:999px; background:#0b1220; border:1px solid #334155}
+    .footer-note{color:var(--muted); font-size:12px; margin-top:8px}
+
+    .decode{margin-top:8px; display:flex; flex-direction:column; gap:6px}
+    .decode .row{display:grid; grid-template-columns:1fr 110px; gap:8px}
+    .decode input{padding:10px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:var(--text)}
+    .decode button{padding:10px 12px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:var(--text); cursor:pointer}
+
+    @media (max-width:900px){
+      .controls{grid-template-columns:1fr 1fr}
+      .buttons{grid-column:1/-1; justify-self:start}
+      .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .tokens-scroll{max-height:none}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🧸 Token Playground</h1>
+    <p>Type something ➜ see colorful tokens. Add special words so they count as <b>one token</b>!</p>
+  </header>
+
+  <div class="wrap">
+    <!-- Left -->
+    <div class="card">
+      <h2>1) Write your text</h2>
+
+      <div class="controls">
+        <div class="field">
+          <label class="label">Engine</label>
+          <select id="engine">
+            <option value="tiktoken">js-tiktoken</option>
+            <option value="custom" selected>Custom BPE</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="label">Encoding</label>
+          <select id="encoding"><option>cl100k_base</option></select>
+        </div>
+
+        <div class="field">
+          <label class="label">Custom tokens <span class="hint">(comma-separated)</span></label>
+          <input id="custom" placeholder="e.g. &lt;NAME&gt;, &lt;DATE&gt;, 😊, PhonePe" />
+          <label class="check"><input id="ci" type="checkbox" /> Aa — case-insensitive specials</label>
+        </div>
+
+        <div class="field">
+          <label class="label">₹ per 1K tokens <span class="hint">(optional)</span></label>
+          <div class="input-wrap"><span class="prefix">₹</span>
+            <input id="price" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal" />
+          </div>
+        </div>
+
+        <div class="buttons">
+          <button id="btn-eg1">Example: Story</button>
+          <button id="btn-eg2">Example: Code</button>
+        </div>
+      </div>
+
+      <!-- Train panel -->
+      <div id="trainPanel" class="subpanel">
+        <h3 style="margin:0 0 8px;font-size:14px;color:#cbd5e1">Train custom tokenizer</h3>
+        <div class="train-grid">
+          <div>
+            <textarea id="trainText" placeholder="Paste training text here (a few paragraphs)…"></textarea>
+          </div>
+          <div class="train-right">
+            <div class="field">
+              <label class="label">Vocab size</label>
+              <input id="vocabSize" type="number" min="64" step="32" value="1000">
+            </div>
+            <div class="field">
+              <label class="label">Specials (comma)</label>
+              <input id="specials" placeholder="<NAME>, <DATE>, 😊">
+              <label class="check"><input id="ciTrain" type="checkbox" /> Aa — case-insensitive specials</label>
+            </div>
+            <button id="btn-train">Train</button>
+            <div id="trainStatus" class="train-status"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="editor">
+        <textarea id="text" placeholder="Type here...  spaces and emojis also matter! 😊"></textarea>
+      </div>
+
+      <div class="stats" id="stats"></div>
+      <div class="legend">Tip: A <span class="pill">token</span> is a small piece of text. Models read numbers (tokens), not letters.</div>
+    </div>
+
+    <!-- Right -->
+    <div class="card">
+      <h2>2) Tokens</h2>
+      <div class="tokens-scroll"><div id="tokens" class="token-grid"></div></div>
+
+      <div class="decode">
+        <label>Decode token IDs (comma/space separated)</label>
+        <div class="row">
+          <input id="ids" placeholder="e.g. 9906, 602, 1097, 893, 21963" />
+          <button id="btn-decode">Decode</button>
+        </div>
+        <div id="decodeOut" class="tok" style="border-style:dashed;"></div>
+      </div>
+
+      <div class="footer-note">Click-and-drag to select and copy. All tokens include their id.</div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (s)=>document.querySelector(s);
+    const textEl=$("#text"), encodingEl=$("#encoding"), customEl=$("#custom"),
+          priceEl=$("#price"), statsEl=$("#stats"), tokensEl=$("#tokens"),
+          idsEl=$("#ids"), decodeOut=$("#decodeOut"),
+          engineEl=$("#engine"), trainPanel=$("#trainPanel"),
+          trainText=$("#trainText"), vocabSizeEl=$("#vocabSize"),
+          specialsEl=$("#specials"), btnTrain=$("#btn-train"), trainStatus=$("#trainStatus"),
+          ciEl=$("#ci"), ciTrainEl=$("#ciTrain");
+
+    const examples = {
+      story:{ text:"Hi, I am <NAME>. Today is <DATE>. I paid ₹150 at PhonePe 😊 and then wrote some code!", custom:"<NAME>, <DATE>, PhonePe, 😊" },
+      code:{  text:"function add(a, b) { return a + b; } // Simple!", custom:"add, return, function" }
+    };
+
+    const TOKEN_COLORS=["#22c55e","#3b82f6","#a855f7","#f59e0b","#ef4444","#14b8a6","#eab308","#f472b6","#10b981","#06b6d4"];
+    function hashStr(s){ let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h)+s.charCodeAt(i); return h>>>0; }
+    function colorForToken(it){ const idx=hashStr(String(it.id))%TOKEN_COLORS.length; const base=TOKEN_COLORS[idx].replace('#',''); return { bg:`#${base}33`, bd:`#${base}88` }; }
+
+    const esc = (s)=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    function fmtTokenText(raw){ const t=String(raw||""); return t.startsWith("▁")?`<span class="space-dot"></span>${esc(t.slice(1))}`:esc(t); }
+
+    $("#btn-eg1").onclick=()=>{ textEl.value=examples.story.text; customEl.value=examples.story.custom; go(); };
+    $("#btn-eg2").onclick=()=>{ textEl.value=examples.code.text;  customEl.value=examples.code.custom;  go(); };
+
+    let t;
+    [textEl,encodingEl,customEl,priceEl,ciEl,ciTrainEl].forEach(el=>el.addEventListener("input",()=>{ clearTimeout(t); t=setTimeout(go,200); }));
+    engineEl.addEventListener("change", ()=>{ trainPanel.style.display = engineEl.value === "custom" ? "block" : "none"; go(); });
+
+    const PRICE_PRESET = {};
+    async function initEncodings(){
+      try{
+        const r = await fetch("/api/encodings"); const d = await r.json();
+        encodingEl.innerHTML = "";
+        (d.encodings || ["cl100k_base","o200k_base","p50k_base","r50k_base","gpt2"]).forEach(name=>{
+          const opt=document.createElement("option"); opt.value=opt.textContent=name; encodingEl.appendChild(opt);
+        });
+        Object.assign(PRICE_PRESET, d.defaultPriceInrPerK || {});
+      }catch(e){ console.warn("Failed to load encodings; using defaults", e); }
+      finally{ setAutoPrice(); }
+    }
+    function setAutoPrice(){ const p = PRICE_PRESET[encodingEl.value]; if (typeof p==="number") priceEl.value = p.toFixed(2); }
+    encodingEl.addEventListener("change", ()=>{ setAutoPrice(); go(); });
+
+    function parseList(val){ return String(val||"").split(",").map(s=>s.trim()).filter(Boolean); }
+    function titleCase(s){ return s ? s[0].toUpperCase()+s.slice(1).toLowerCase() : s; }
+    function expandCase(list){
+      const set = new Set();
+      list.forEach(s=>{ if(!s) return; set.add(s); set.add(s.toLowerCase()); set.add(s.toUpperCase()); set.add(titleCase(s)); });
+      return [...set];
+    }
+
+    // train custom
+    btnTrain.onclick = async ()=>{
+      trainStatus.textContent = "Training...";
+      let specials = parseList(specialsEl.value);
+      if (ciTrainEl.checked) specials = expandCase(specials);
+      const body = { text: trainText.value, vocabSize: Number(vocabSizeEl.value||1000), specials };
+      const res = await fetch("/api/custom/train",{ method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body) });
+      const data = await res.json();
+      trainStatus.textContent = data.ok ? `Trained ✓  Vocab: ${data.vocabSize}, merges: ${data.merges}` : (data.error || "Failed");
+      if (data.ok) go();
+    };
+
+    async function go(){
+      const engine = engineEl.value;
+      if (engine === "custom") {
+        const res = await fetch("/api/custom/encode", {
+          method:"POST", headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ text: textEl.value })
+        });
+        const data = await res.json();
+        if (data.error) { trainStatus.textContent = data.error + " — paste some text above and click Train."; tokensEl.innerHTML=""; statsEl.innerHTML=""; return; }
+        renderCustom(data);
+      } else {
+        let customTokens = parseList(customEl.value);
+        if (ciEl.checked) customTokens = expandCase(customTokens);
+        const body = { text: textEl.value, encodingName: encodingEl.value, customTokens };
+        const res = await fetch("/api/tokenize",{ method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body) });
+        render(await res.json());
+      }
+    }
+
+    function render(data){
+      const { counts, items, tokenIds } = data;
+      const price=parseFloat(priceEl.value||"0"); const cost=price ? (tokenIds.length/1000)*price : 0;
+      statsEl.innerHTML = `
+        <div class="stat">Characters<br><b>${counts.characters}</b></div>
+        <div class="stat">Tokens<br><b>${counts.tokens}</b></div>
+        <div class="stat">Avg chars/token<br><b>${counts.avgCharsPerToken.toFixed(2)}</b></div>
+        <div class="stat">Cost est.<br><b>${cost ? '₹'+cost.toFixed(4) : "—"}</b></div>`;
+      tokensEl.innerHTML = items.map(it=>{
+        const col=colorForToken(it); const safe=fmtTokenText(it.text);
+        return `<span class="tok" style="background:${col.bg};border-color:${col.bd}"><span class="text">${safe}</span><span class="id">#${it.id}</span></span>`;
+      }).join("");
+      idsEl.value = tokenIds.join(", "); decodeOut.textContent = "";
+    }
+
+    function renderCustom(data){
+      const { counts = {}, items = [], tokenIds = data.tokenIds || [] } = data;
+      const chars = counts.characters ?? textEl.value.length;
+      const tks = counts.tokens ?? tokenIds.length;
+      const avg = counts.avgCharsPerToken ?? (tks ? chars/tks : 0);
+      const price=parseFloat(priceEl.value||"0"); const cost=price ? (tks/1000)*price : 0;
+      statsEl.innerHTML = `
+        <div class="stat">Characters<br><b>${chars}</b></div>
+        <div class="stat">Tokens<br><b>${tks}</b></div>
+        <div class="stat">Avg chars/token<br><b>${avg.toFixed(2)}</b></div>
+        <div class="stat">Cost est.<br><b>${cost ? '₹'+cost.toFixed(4) : "—"}</b></div>`;
+      tokensEl.innerHTML = (items.length ? items : tokenIds.map((id,i)=>({id, text:id}))).map(it=>{
+        const col=colorForToken(it); const safe=fmtTokenText(it.text);
+        return `<span class="tok" style="background:${col.bg};border-color:${col.bd}"><span class="text">${safe}</span><span class="id">#${it.id}</span></span>`;
+      }).join("");
+      idsEl.value = (tokenIds || []).join(", "); decodeOut.textContent = "";
+    }
+
+    $("#btn-decode").onclick = async () => {
+      const engine = engineEl.value; const tokenIds = idsEl.value;
+      const url = engine === "custom" ? "/api/custom/decode" : "/api/decode";
+      const body = engine === "custom" ? { tokenIds } : { tokenIds, encodingName: encodingEl.value };
+      const res = await fetch(url,{ method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body) });
+      const data = await res.json(); decodeOut.textContent = data.text || "(no text)";
+    };
+
+    initEncodings().then(()=>{ trainPanel.style.display = engineEl.value === "custom" ? "block" : "none"; go(); });
+  </script>
+</body>
+</html>
