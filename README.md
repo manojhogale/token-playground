@@ -98,6 +98,9 @@ npm test
 - ![Token Playground – Custom BPE, training + tokens view](docs/token-playground-1.png)
 - ![Token Playground – Stats + Decode](docs/token-playground-2.png)
 
+- ![Token Playground – Js-tiktoken](docs/token-playground-3.png)
+
+
 ---
 
 ## 🧪 Ready-to-use Demo Data
@@ -239,6 +242,7 @@ token-playground/
 ├─ docs/
 │  ├─ token-playground-1.png
 │  └─ token-playground-2.png
+│  └─ token-playground-3.png
 ├─ cli.js
 └─ README.md
 ```
